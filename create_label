@@ -1,0 +1,81 @@
+import glob
+import os
+import numpy as np
+
+dir = "D:\data\VOC2012"
+label_dir = "ImageSets\Main"
+img_dir = "JPEGImages"
+
+train_txts = glob.glob( os.path.join(dir, label_dir, '*_train.txt'))
+val_txts = glob.glob( os.path.join(dir, label_dir, '*_val.txt'))
+
+cls_names = [name.rsplit("\\", 1)[-1].split('_')[0] for name in train_txts]
+cls_ids = list(range(20))
+cls_dict = dict(zip(cls_name, cls_idx))
+
+val_imgs = []
+val_labels  = []
+for label_txt in val_txts:
+	label_name = label_txt.rsplit("\\", 1)[-1].split('_')[0]
+	label_idx = cls_dict[label_name]
+	with open(label_txt, 'r') as file:
+		lines = file.readlines()
+		img_names = [line.strip('\n').split(' ')[0] for line in lines if line.strip('\n').split(' ')[-1] == '1']
+		img_names = [name for name in img_names if name not in val_imgs]
+		labels = [label_idx] * len(img_names)
+		val_imgs.extend(img_names)
+		val_labels.extend(labels)
+	print("长度", len(img_names))
+
+with open('val_label.txt', 'a+') as file:
+	for i in range(len(val_labels)):
+		img_name = val_imgs[i]
+		label_name = val_labels[i]
+		file.write(img_name + " " + str(label_name) + "\n")
+file.close()
+
+import tensorflow as tf
+cpus = tf.config.list_physical_devices('CPU')
+tf.config.set_visible_devices(cpus)
+
+from tensorflow import keras
+import keras.layers as layers
+
+import os
+import pathlib
+
+import random
+
+# load pre-trained model
+saved_path = "/tmp/tmp_file/VGG/VGG/vgg16_model"
+weights_path = "/tmp/tmp_file/VGG/VGG/vgg16.h5"
+label_path = "/tmp/tmp_file/train_label.txt"
+im_path = "/tmp/tmp_file/JPEGImages"
+
+os.path.exists( save_path )
+
+pre_model = keras.models.load_model(saved_path)
+
+labels = open(label_path, 'r').readlines()
+idxs = list(range(0,len(labels),40))
+
+for id in idxs:
+	im_name, im_label = labels[id].strip('\n').split(' ')
+	pil = keras.utils.load_img(os.path.join(im_path, im_name+'.jpg'), target_size=(224,224))
+	x = keras.utils.img_to_array(pil)
+	x = tf.constant(x, tf.float32)
+	x = tf.expand_dims(x, 0)
+	y = int(im_label)
+	
+	output = pre_model(x)
+	probs, ids = tf.math.top_k(output, 5)
+	print(ids, '\n', y)
+	print()
+
+
+
+
+
+
+
+
