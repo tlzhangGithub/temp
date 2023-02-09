@@ -1,10 +1,4 @@
-一、App store切换账户，下载app
-退出自己的App store账户，登入这个账户：
-账户：tlzhangchina@163.com
-Qazwsx-2023
-下载StrongVPN - The Strongest VPN
-
-二、 手动设置VPN。总共 步
+手动设置VPN。总共4步
 2.1 关掉手机的定位服务。settings / Privacy.
 2.2 设置/通用/VPN与设备管理/VPN/添加VPN配置/类型/IKEV2
 2.3 填充参数：
@@ -18,5 +12,11 @@ Qazwsx-2023
 代理按钮: （关闭/手动/自动）选择‘关闭’
 点击右上角‘完成’按钮
 2.4 选中StrongVPN、滑动‘状态’按钮，显示‘已连接’就是成功了。
+最后，可以登录谷歌测试网络
 
-可以登录谷歌测试网络
+
+
+另外，下载国外的app，需要用国外的apple ID。App store切换账户，下载app
+退出自己的App store账户，登入这个账户：
+账户：tlzhangchina@163.com
+Qazwsx-2023
