@@ -1,0 +1,216 @@
+# -*- coding: utf-8 -*-
+"""
+VGG_ conx1d
+"""
+import keras
+import tensorflow as tf
+import sklearn
+import sklearn.preprocessing
+import pandas as pd
+import numpy as np
+#from utils import dataset, constants
+from keras.utils import to_categorical
+from tensorflow.keras import layers
+import logging
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report,roc_auc_score,roc_curve
+from contextlib import redirect_stdout
+
+Model_number = '14'
+
+#定义日志
+logger = logging.getLogger(__name__)
+logger.setLevel(level='INFO')
+formatter =logging.Formatter('%(filename)s-%(lineno)d-%(asctime)s-%(levelname)s-%(message)s')
+
+console_handler = logging.StreamHandler()#控制台handler
+console_handler.setLevel(level='INFO')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+file_handler = logging.FileHandler(filename ='D:\\AI_AlarmD3\VGG\VGG_conv1d_tf.txt',mode ='a',encoding = 'UTF-8')
+file_handler.setLevel(level='INFO')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+#ROC曲线函数
+def plot_roc_curve(y_true,y_score,Model_number):
+    fpr,tpr,threshold = roc_curve(y_true, y_score,pos_label=1)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('roc curve')
+    plt.plot(fpr,tpr,color='b',linewidth = 0.8)
+    plt.plot([0,1],[0,1],'r--')
+    plt.savefig('D:\AI_AlarmD3\VGG'+Model_number+'训练损失与验证损失.png')
+    
+#模型基础结构
+'''
+model = tf.keras.Sequential(
+        [
+        #layers.Conv1D(filters,kernel_size, activation='relu',padding='same',kernel_regularize正则化器、预防过拟合)
+        layers.Conv1D(64, 2, activation='relu', padding='same', kernel_regularizer=keras.regularizers.l2(0.001), input_shape=(61, 43)),
+        layers.Conv1D(64, 2, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2),
+        layers.Conv1D(128, 2, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv1D(128, 2, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2),
+        layers.Conv1D(256, 2, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv1D(256, 2, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.GlobalAveragePooling1D(),
+        layers.Dense(2, activation='sigmoid')
+        
+        ])
+'''
+model = tf.keras.Sequential(
+        [
+        #layers.Conv1D(filters,kernel_size, activation='relu',padding='same',kernel_regularize正则化器、预防过拟合)
+        layers.Conv1D(64, 3, activation='relu', padding='same', kernel_regularizer=keras.regularizers.l2(0.001), input_shape=(61, 43)),
+        layers.MaxPooling1D(2,strides=2),
+        layers.Conv1D(128, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2,strides=2),
+        layers.Conv1D(256, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv1D(256, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2,strides=2),
+        layers.Conv1D(512, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv1D(512, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2,strides=2),
+        layers.Conv1D(512, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.Conv1D(512, 3, activation='relu', padding='same',kernel_regularizer=keras.regularizers.l2(0.001)),
+        layers.MaxPooling1D(2,strides=2),
+        layers.Flatten(),
+        layers.Dense(4096, activation='relu'),
+        layers.Dense(4096, activation='relu'),
+        layers.Dense(2, activation='sigmoid')
+        
+        ])
+if __name__ == '__main__':
+    #数据路径
+    path_alarmData = 'D:\\AI_AlarmD3\\DataSet\\alarmData.csv'
+    path_label = 'D:\\AI_AlarmD3\\DataSet\\label.csv'
+    PNG_FILENAME = 'D:\AI_AlarmD3\VGG'
+    #默认参数定义
+    EPOCHS = 35 
+    BATCH_SIZE = 50
+    NUM_CLASSES = 2
+    #数据集读取
+    x_data = []
+    y_data = []
+    label = pd.read_csv(path_label) 
+    label = label.drop('idx', axis=1)
+    #y_label_val = label[1556:]
+    y_label_val = label[:139]
+    x_raw = pd.read_csv(path_alarmData)
+    x_raw = x_raw.drop('sample_idx', axis=1)
+    #转为array，变为浮点型
+    x_data = np.array(x_raw).astype('float32')
+    y_data = np.array(label).astype('float32')
+    #标签onehot
+    y_data =to_categorical(y_data, 2)
+    #keras.utils.
+    
+    #数据集测试集划分
+    #K折交叉验证 x_train为训练集和验证集 x_val为测试集，先分开
+    x_val = x_data[:139*61]     
+    y_val = y_data[:139]
+    x_train_test = x_data[139*61:]
+    y_train_test = y_data[139:]
+    k = 4
+    num_train_test_samples = len(x_train_test)/k #61乘以行数
+    for i in range(k):
+        print('processing fold #',i)
+        n = num_train_test_samples/61
+        x_test = x_train_test[int(i*num_train_test_samples):int((i+1)*num_train_test_samples)]
+        y_test =  y_train_test[int(i*n):int((i+1)*n)]
+        x_train = np.concatenate(
+            [x_train_test[:int(i*num_train_test_samples)],x_train_test[int((i+1)*num_train_test_samples):]],axis=0)
+        y_train = np.concatenate(
+            [y_train_test[:int(i*n)],y_train_test[int((i+1)*n):]],axis=0)
+        # 预处理 归一化0-1
+        # preprocess
+        
+        scaler = sklearn.preprocessing.StandardScaler()
+        x_train = scaler.fit_transform(x_train.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        x_test = scaler.transform(x_test.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        x_val = scaler.transform(x_val.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        
+        '''
+        x_train = (x_train.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        x_test = (x_test.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        x_val = (x_val.astype(np.float32).reshape(-1, 1)).reshape(-1, 61, 43)
+        '''
+        #对tensor切片得到数据集
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (x_train, y_train)).batch(BATCH_SIZE)
+        test_dataset = tf.data.Dataset.from_tensor_slices(
+            (x_test, y_test)).batch(BATCH_SIZE)
+        val_dataset = tf.data.Dataset.from_tensor_slices(
+            (x_val, y_val)).batch(BATCH_SIZE)
+        #模型配置及运行
+        optimizer='rmsprop'
+        loss='binary_crossentropy'
+        metrics=['accuracy']
+        model.compile(optimizer,loss,metrics)
+        history = model.fit(train_dataset,epochs=EPOCHS,batch_size=BATCH_SIZE,validation_data=(test_dataset))
+        
+        #验证集的输出
+        y_pred_test = model.predict(x_test)
+        y_pred_test_class = np.argmax(y_pred_test, axis=1)
+        print('y_pred_test_class=',y_pred_test_class)
+        # 结果画图 训练损失和验证损失
+        history_dict = history.history
+        loss_values = history_dict['loss']
+        val_loss_values =  history_dict['val_loss']
+        epochs = range(1,len(loss_values)+1)
+        plt.plot(epochs,loss_values,'bo',label="Training loss")
+        plt.plot(epochs,val_loss_values,'b',label="Validation loss")
+    
+        plt.title("Training and validation loss for model"+Model_number+'    i='+str(i))
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.show()
+        plt.savefig('D:\AI_AlarmD3\VGG\plot'+Model_number+'训练损失与验证损失.png')
+        #训练精度和验证精度
+        plt.clf()
+        acc =  history_dict['accuracy']
+        val_acc = history_dict['val_accuracy']
+        plt.plot(epochs,acc,'bo',label="Training acc")
+        plt.plot(epochs,val_acc,'b',label="Validation acc")
+        
+        plt.title("Training and validation acc for model"+Model_number+'    i='+str(i))
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+        plt.show()
+        plt.savefig('D:\AI_AlarmD3\VGG\plot'+Model_number+'训练精度与验证精度.png')
+        #识别结果
+        model.save('D:\AI_AlarmD3\VGG\model'+Model_number+'i='+str(i)+'.h5')
+    
+        y_pred = model.predict(x_val)
+        #阳性的概率
+        y_pred_1 = np.delete( y_pred,0,axis=1)
+        #画roc
+        fig,ax = plt.subplots(figsize=(12,10))
+        auc = roc_auc_score(y_label_val, y_pred_1)
+        plot_roc_curve(y_label_val, y_pred_1,Model_number)
+    
+        y_pred_class = np.argmax(y_pred, axis=1)
+        print('y_pred_class=',y_pred_class)
+        report = classification_report(y_label_val, y_pred_class)
+
+        #日志输出
+        #1.模型结构
+        logger.info(f'Model_number:{Model_number}{i}')
+        model.summary()
+        with open('D:\\AI_AlarmD3\VGG\VGG_conv1d_tf.txt','a') as f:
+            with redirect_stdout(f):
+                model.summary()
+                #2.模型配置
+                logger.info(f'optimizer,loss,metrics: {optimizer} {loss} {metrics}')
+                #3.测试集报告
+                logger.info(f'val_report: {report}')
+                #roc
+                logger.info(f'auc: { auc}')
+   
+    
+    
